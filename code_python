@@ -1,0 +1,88 @@
+# load data
+train = pd.read_csv('train.csv', encoding = "ISO-8859-1") # ok que es eso?
+test = pd.read_csv('test.csv')
+addresses = pd.read_csv('addresses.csv')
+latlons = pd.read_csv('latlons.csv')
+
+# pre-processing
+    
+# drop all rows with Null compliance
+#The numpy.isfinite() function tests element-wise whether it is finite or not
+#(not infinity or not Not a Number) and return the result as a boolean array. 
+train = train[np.isfinite(train['compliance'])]
+    
+# drop all rows not in the U.S
+train = train[train.country == 'USA']
+test = test[test.country == 'USA']
+    
+# merge latlons and addresses with data
+#pd.merge ON = Column or index level names to join on.
+train = pd.merge(train, pd.merge(addresses, latlons, on='address'), on='ticket_id') 
+
+test = pd.merge(test, pd.merge(addresses, latlons, on='address'), on='ticket_id')
+    
+# drop all unnecessary columns
+train.drop(['agency_name', 'inspector_name', 'violator_name', 'non_us_str_code', 'violation_description', 
+                'grafitti_status', 'state_fee', 'admin_fee', 'ticket_issued_date', 'hearing_date',
+                
+                # columns not available in test
+                'payment_amount', 'balance_due', 'payment_date', 'payment_status', 
+                'collection_status', 'compliance_detail', 
+                # address related columns
+                'violation_zip_code', 'country', 'address', 'violation_street_number',
+                'violation_street_name', 'mailing_address_str_number', 'mailing_address_str_name', 
+                'city', 'state', 'zip_code', 'address'], axis=1, inplace=True)
+# discretizing relevant columns
+
+# creating initial dataframe
+label_encoder = LabelEncoder()  #involves converting each value in a column to a number. 
+
+# Assigning numerical values ### necesito exoplicacion de esta linea
+label_encoder.fit(train['disposition'].append(test['disposition'], ignore_index=True)) 
+###
+
+# storing in another column
+train['disposition'] = label_encoder.transform(train['disposition']) #ransform labels to normalized encoding. 
+test['disposition'] = label_encoder.transform(test['disposition'])
+
+# creating initial dataframe
+label_encoder = LabelEncoder()
+
+# Assigning numerical values 
+label_encoder.fit(train['violation_code'].append(test['violation_code'], ignore_index=True))
+
+# storing in another column
+train['violation_code'] = label_encoder.transform(train['violation_code'])
+test['violation_code'] = label_encoder.transform(test['violation_code'])
+
+
+#que verga hace aca? reemplaza los NA por la media?? 
+#como podria hacer para verificar mi teoria que rellena los NA con la media?
+train['lat'] = train['lat'].fillna(train['lat'].mean())
+train['lon'] = train['lon'].fillna(train['lon'].mean())
+test['lat'] = test['lat'].fillna(test['lat'].mean())
+test['lon'] = test['lon'].fillna(test['lon'].mean())
+
+#aca no entiendo porque hace una lista, ni para que hace esta parte
+train_columns = list(train.columns.values) 
+train_columns.remove('compliance')
+test = test[train_columns]
+    
+# train the model
+X_train, X_test, y_train, y_test = train_test_split(train.ix[:, train.columns != 'compliance'], train['compliance'])
+regr_rf = RandomForestRegressor()
+grid_values = {'n_estimators': [10, 100], 'max_depth': [None, 30]} #n_estimators = number of trees in the foreset. max_features = max number of features considered for splitting a node.
+
+
+##GridSearchCV: It helps to loop through predefined hyperparameters and fit your estimator (model) on your training set. 
+#parameters: estimator: regr_rf, param_grid: Dictionary with parameters names (str), scoring: Strategy to evaluate the performance of the cross-validated model on the test set. 
+
+###no me termino de explicar el scoring='roc_auc'
+grid_clf_auc = GridSearchCV(regr_rf, param_grid=grid_values, scoring='roc_auc') 
+grid_clf_auc.fit(X_train, y_train)
+print('Grid best parameter (max. AUC): ', grid_clf_auc.best_params_)
+print('Grid best score (AUC): ', grid_clf_auc.best_score_)
+    
+pd.DataFrame(grid_clf_auc.predict(test), test.ticket_id)
+ 
+
