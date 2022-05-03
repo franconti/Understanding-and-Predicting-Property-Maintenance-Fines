@@ -1,11 +1,20 @@
+# Importing libraries
+
 import pandas as pd
 import numpy as np
-
+import seaborn as sns
+import matplotlib.pyplot as plt
+from pandas import ExcelWriter
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import roc_auc_score
-
+from sklearn.metrics import accuracy_score, recall_score, auc, roc_curve, precision_score, f1_score, roc_auc_score, precision_recall_curve
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
 # load data
