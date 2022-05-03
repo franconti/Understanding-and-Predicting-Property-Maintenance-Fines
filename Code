@@ -1,3 +1,4 @@
+
     # IMPORTING LIBRARIES 
 
 import pandas as pd
@@ -16,19 +17,235 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
-
+################################################################################
     # LOADING DATA 
     
-train = pd.read_csv('train.csv', encoding = "ISO-8859-1") # ok que es eso?
-test = pd.read_csv('test.csv')
+train_df = pd.read_csv('train.csv', encoding = "ISO-8859-1") # ok que es eso?
+test_df = pd.read_csv('test.csv')
 addresses = pd.read_csv('addresses.csv')
 latlons = pd.read_csv('latlons.csv')
 
 #train_df.shape
 
+
+
+################################################################################
     # CLEANING DATA 
     
 train_df.info()
 
-#DROPING DATA THAT NOT PROVIDE INFORMATION. For example variables with payment information
-    
+#Droping Data that not provide information. For example variables with payment information, too many missing/null values, too many categories.
+
+train_df = train_df.drop(['ticket_id','country','payment_date','payment_status','collection_status',
+                          'grafitti_status','compliance_detail','violation_zip_code','non_us_str_code',
+                          'payment_amount','late_fee','balance_due','state'],axis=1)
+test_df = test_df.drop(['ticket_id','country','grafitti_status','violation_zip_code','non_us_str_code',
+                        'late_fee','state'],axis=1)
+#train_df.head()
+  
+  
+#Dropping variables with too many unique values.
+
+##First we visualice number of unique values
+
+
+######### PLOT ojo aca!! para ver mas tarde
+unique_lens = []
+for var in train_df.columns:
+  unique_lens.append(len(train_df[var].unique()))
+
+plt.figure(figsize=(16,8))
+plt.bar(train_df.columns,unique_lens,alpha=0.7)
+plt.xticks(rotation=90,size=15)
+plt.yticks(size=15)
+plt.show()
+########
+
+######## Data Table 
+#them explore categories with smaller number of variables
+#Exploring the unique values for categorical variables that have relatively lower categories
+print ("Number of unique values in violation_code:",len(train_df['violation_code'].unique()))
+print ("Number of unique values in violation_description:",len(train_df['violation_description'].unique()))
+print ("Number of unique values in violation_street_name:",len(train_df['violation_street_name'].unique()))
+print ("Number of unique values in disposition:",len(train_df['disposition'].unique()))
+print ("Number of unique values in zip_code:",len(train_df['zip_code'].unique()))
+print ("Number of unique values in inspector_name:",len(train_df['inspector_name'].unique()))
+########
+
+
+# drop variables
+
+train_df = train_df.drop(['violator_name','violation_street_number','mailing_address_str_number',
+                          'mailing_address_str_name','violation_street_name',
+                          'violation_code','violation_description','zip_code','inspector_name'],axis=1)
+test_df = test_df.drop(['violator_name','violation_street_number','mailing_address_str_number',
+                          'mailing_address_str_name','violation_street_name',
+                          'violation_code','violation_description','zip_code','inspector_name'],axis=1)
+train_df.info()
+
+# to change all city entries to upper case 
+train_df['city'].value_counts()
+
+# Explore values in 'city' 
+train_df['city'].value_counts()
+
+#Filtering tickets only for  Detroit, because is the main data and then dropping the 'city' variable 
+
+train_df = train_df[train_df["city"]=="DETROIT"]
+train_df = train_df.drop(["city"],axis=1)
+test_df = test_df.drop(["city"],axis=1)
+
+
+
+
+
+
+
+
+
+# Analizing 'compliance' variable: The Target variable
+#'compliance' [target variable for prediction] could contain 3 values:
+        #Null = Not responsible
+        #0 = Responsible, non-compliant
+        #1 = Responsible, compliant
+
+######## PLOT ploting the variable
+plt.figure(figsize=(12,8))
+sns.countplot(data=train_df,x='compliance',alpha=0.8)
+plt.xticks(size=15)
+plt.yticks(size=15)
+plt.xlabel('Compliance',size=15)
+plt.ylabel('Count',size=15)
+plt.show()
+########
+
+# Exploring how much null values the target variable has
+train_df['compliance'].isnull().sum()
+
+#Removing all 'not found responsible' compliance entries
+train_df = train_df[(train_df["compliance"]==1.0) | (train_df["compliance"]==0.0)]
+
+
+
+
+
+
+
+
+# Exploring Categorical variables
+
+######## ploting 
+plt.figure(figsize=(12,8))
+sns.countplot(data=train_df,x='agency_name',hue='compliance',alpha=0.8)
+plt.xlabel('Compliance',size=15)
+plt.ylabel('Count',size=15)
+plt.xticks(rotation=45,size=15)
+plt.yticks(size=15)
+plt.show()
+########
+
+######## displaying data table
+agency_name_group = train_df[['agency_name','compliance','fine_amount']].groupby(['agency_name','compliance']).count()
+agency_name_group.columns = ['count']
+agency_name_group['percent'] = agency_name_group.groupby(level=0).apply(lambda x: 100*(x/x.sum()))
+agency_name_group
+########
+
+
+
+# Exploring numerical variables (ploting bellow) 
+
+######## ploting for 'fine_amount'
+
+plt.figure(figsize=(18,8))
+plt.subplot(1,2,1)
+sns.boxplot(data=train_df,y='fine_amount',x='compliance')
+plt.title('Fine amount vs compliance')
+plt.subplot(1,2,2)
+sns.boxplot(data=train_df[train_df['fine_amount']<1000],y='fine_amount',x='compliance')
+plt.title('Fine amount vs compliance (zoomed in)')
+
+######## ploting for 'admin_fee'
+sns.boxplot(data=train_df,y='admin_fee',x='compliance')
+
+plt.hist(train_df['admin_fee'])
+
+# 'admin_fee' is a constant so, it doesn't provide useful information for prediction.  should be removed. 
+
+######## ploting for 'state_fee'
+sns.boxplot(data=train_df,y='state_fee',x='compliance')
+
+plt.scatter(range(len(train_df['state_fee'])),train_df['state_fee'])
+
+# 'state_fee' is the same case as 'admin_fee'. should be removed. 
+
+
+######## ploting for 'discount_amount'
+plt.figure(figsize=(18,8))
+plt.subplot(1,2,1)
+sns.boxplot(data=train_df,y='discount_amount',x='compliance')
+plt.title('Discount amount vs compliance')
+plt.subplot(1,2,2)
+sns.boxplot(data=train_df[train_df['discount_amount']!=0],y='discount_amount',x='compliance')
+plt.title('Discount amount vs compliance (zoomed in)')
+
+
+######## ploting for 'clean_up_cost'
+sns.boxplot(data=train_df,y='clean_up_cost',x='compliance')
+
+plt.scatter(range(len(train_df['clean_up_cost'])),train_df['clean_up_cost'])
+
+# This variabvle only contains one value, should be removed.
+
+
+######## ploting for 'judgment_amount'
+plt.figure(figsize=(18,8))
+plt.subplot(1,2,1)
+sns.boxplot(data=train_df,y='judgment_amount',x='compliance')
+plt.subplot(1,2,2)
+
+
+
+ 
+#Dropping variables that don't provide information. 
+train_df = train_df.drop(['admin_fee','state_fee','clean_up_cost'],axis=1)
+test_df = test_df.drop(['admin_fee','state_fee','clean_up_cost'],axis=1)
+
+
+################################################################################
+# Label encoding
+
+#Label encoding categorical variables
+le = LabelEncoder()
+ohe = OneHotEncoder()
+
+le.fit(train_df["agency_name"].append(test_df["agency_name"]))
+train_df["agency_name"] = le.transform(train_df["agency_name"])
+test_df["agency_name"] = le.transform(test_df["agency_name"])
+
+le.fit(train_df["disposition"].append(test_df["disposition"]))
+train_df["disposition"] = le.transform(train_df["disposition"])
+test_df["disposition"] = le.transform(test_df["disposition"])
+
+
+################################################################################
+# Data preparation
+#to split the training data into the explanatory and target variables, and then split the resulting data into train and test sets.
+
+#Splitting the training dataset into features and target variables
+y = train_df["compliance"]
+x = train_df.drop(["compliance"],axis=1)
+
+#Train/Test Split
+x_train,x_test,y_train,y_test = train_test_split(x,y,random_state=0)
+
+
+print (x_train.shape)
+print (x_test.shape)
+print (y_train.shape)
+print (y_test.shape)
+
+
+
+################################################################################
+#Modeling
