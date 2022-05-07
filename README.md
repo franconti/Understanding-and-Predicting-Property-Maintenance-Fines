@@ -4,9 +4,14 @@ Assignment 4 of course "Applied Machine Learning in Python"
 
 INTRODUCTION:
 
-The Michigan Data Science Team (MDST) and the Michigan Student Symposium for Interdisciplinary Statistical Sciences (MSSISS) have partnered with the City of Detroit to help solve one of the most pressing problems facing Detroit - blight. Blight violations are issued by the city to individuals who allow their properties to remain in a deteriorated condition. Every year, the city of Detroit issues millions of dollars in fines to residents and every year, many of these fines remain unpaid. Enforcing unpaid blight fines is a costly and tedious process, so the city wants to know: how can we increase blight ticket compliance?
+This project is about a busnies problem related to Detroit’s blight complication.
+Blight is a term used to signify property or land that is in poor condition due to a lack of upkeep and maintenance. As a result, the property eventually becomes unsafe or uninhabitable. As a solution, the goverment started issuing maintenance fines to residents and owners of the respective properties. 
+Because most of blight tickets were not paid, the aim of this project was to predict blight compliance and understand why the rate of compliance was so low. 
 
-For this proyect, the objetive is to predict whether a given blight ticket will be paid on time.
+THE OBJETIVE: 
+
+The objetive is to predict whether a given blight ticket will be paid on time.
+
 
 DATA:
 
