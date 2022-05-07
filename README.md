@@ -1,5 +1,5 @@
 # Understanding-and-Predicting-Property-Maintenance-Fines
-Assignment 4 of course "Applied Machine Learning in Python"
+
 
 
 INTRODUCTION:
@@ -61,3 +61,20 @@ readonly/addresses.csv & readonly/latlons.csv - mapping from ticket id to addres
          0 = Responsible, non-compliant
          1 = Responsible, compliant
         compliance_detail - More information on why each ticket was marked compliant or non-compliant
+
+
+
+DATA CLEANING 
+
+After a look of the variables were removed Variables that contained payment information, Variables  with too many missing/null values, Variables that contained too many categories. 
+
+Number of unique values in violation_code: 235
+Number of unique values in violation_description: 258
+Number of unique values in violation_street_name: 1791
+Number of unique values in disposition: 9
+Number of unique values in zip_code: 5643
+Number of unique values in inspector_name: 173
+
+
+
+
