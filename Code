@@ -213,7 +213,7 @@ test_df = test_df.drop(['admin_fee','state_fee','clean_up_cost'],axis=1)
 
 
 ################################################################################
-# Label encoding
+    # Label encoding
 
 #Label encoding categorical variables
 le = LabelEncoder()
@@ -229,7 +229,7 @@ test_df["disposition"] = le.transform(test_df["disposition"])
 
 
 ################################################################################
-# Data preparation
+    # Data preparation
 #to split the training data into the explanatory and target variables, and then split the resulting data into train and test sets.
 
 #Splitting the training dataset into features and target variables
@@ -248,4 +248,206 @@ print (y_test.shape)
 
 
 ################################################################################
-#Modeling
+    #Modeling Simple Random Forest Regressor
+    
+#Defining lists for scoring metrics which will be used to store metrics for each modeling iteration
+prec = [] 
+rec = [] 
+acc = [] 
+auc = []
+f1 = [] 
+model_method = [] 
+spec = []
+
+def model_predict(model,x_train,x_test,y_train,y_test):  
+
+  x_train = pd.DataFrame(x_train)
+  x_train.columns = x.columns
+  x_test = pd.DataFrame(x_test)
+  x_test.columns = x.columns
+  y_train = pd.DataFrame(y_train)
+  #y_train.columns = 'compliance'
+  y_test = pd.DataFrame(y_test)
+  #y_test.columns = 'compliance'
+
+  #Modeling and prediction
+  model = model.fit(x_train,y_train)
+  prediction = model.predict(x_test)
+
+  #Calculating prediction probabilities
+  lr_probs = model.predict_proba(x_test)
+  lr_probs_pos = lr_probs[:,1]
+  lr_probs_neg = lr_probs[:,0]
+
+  #Calculating ROC AUC values
+  lr_auc = roc_auc_score(y_test, prediction)
+  lr_auc_pos = roc_auc_score(y_test, lr_probs_pos)
+  lr_auc_neg = roc_auc_score(y_test, lr_probs_neg)
+
+  print('Combined ROC AUC=%.3f' % (lr_auc))
+  print('Severe class ROC AUC=%.3f' % (lr_auc_pos))
+  print('Not severe class ROC AUC=%.3f' % (lr_auc_neg))
+
+  lr_fpr, lr_tpr, thresh = roc_curve(y_test, prediction)
+  lr_fpr_neg, lr_tpr_neg, thresh = roc_curve(y_test, lr_probs[:,0])
+  lr_fpr_pos, lr_tpr_pos, thresh = roc_curve(y_test, lr_probs_pos)
+
+  tn, fp, fn, tp = confusion_matrix(y_test.values, prediction).ravel()
+
+  #Calculating scoring metrics
+  precision = precision_score(y_test.values,prediction)
+  accuracy = accuracy_score(y_test.values,prediction)
+  roc_auc = lr_auc_pos
+  recall = recall_score(y_test.values,prediction)
+  f1 = f1_score(y_test.values,prediction)
+  specificity = tn/(tn+fp)
+
+  print ("ROC AUC: ",roc_auc)
+  print ("Accuracy: ",accuracy)
+  print ("Precision: ",precision)
+  print ("Recall: ",recall)
+  print ("F1 score: ",f1)
+  print ("Specificity: ",specificity)
+
+  #Plotting ROC AUC curve
+  plt.figure(figsize=(9,7))
+  # plot the roc curve for the model
+  plt.plot(lr_fpr, lr_tpr, marker='.', label='Combined')
+  plt.plot(lr_fpr_neg, lr_tpr_neg, marker='.', label='Not severe class')
+  plt.plot(lr_fpr_pos, lr_tpr_pos, marker='.', label='Severe class')
+  # axis labels
+  plt.xlabel('False Positive Rate')
+  plt.ylabel('True Positive Rate')
+  # show the legend
+  plt.legend()
+  # show the plot
+  plt.show()
+
+  # calculate precision-recall curve
+  precision_curve, recall_curve, thresholds = precision_recall_curve(y_test, lr_probs[:,1])
+  plt.figure(figsize=(9,7))
+  plt.plot(recall_curve,precision_curve)
+  plt.xlabel('Recall')
+  plt.ylabel('Precision')
+  plt.show()
+
+  #Plotting confusion matrix
+  plot_confusion_matrix(cm           = np.array([[ tp,  fn],
+                                                [  fp, tn]]), 
+                        normalize    = False,
+                        target_names = ['Compliance', 'Non-compliance'],
+                        title        = "Confusion Matrix")
+  
+  #model.n_features_
+  #model.best_score_
+  #model.booster_
+  features = pd.DataFrame()
+  features['Feature'] = x_train.columns
+  features['Importance'] = model.feature_importances_
+  print (features.sort_values('Importance',ascending=False))
+
+  plt.figure(figsize=(12,8))
+  sns.barplot(x='Feature',y='Importance',data=features.sort_values('Importance',ascending=False),alpha=0.7,palette='Blues_d')
+  plt.xticks(rotation=45,size=18)
+  plt.yticks(size=18)
+  plt.xlabel('Feature',size=20)
+  plt.ylabel('Score',size=20)
+  plt.show()
+
+  return precision,recall,accuracy,roc_auc,f1,specificity
+  
+  
+  
+  
+  def plot_confusion_matrix(cm,
+                          target_names,
+                          title='Confusion matrix',
+                          cmap=None,
+                          normalize=True):
+    """
+    given a sklearn confusion matrix (cm), make a nice plot
+
+    Arguments
+    ---------
+    cm:           confusion matrix from sklearn.metrics.confusion_matrix
+
+    target_names: given classification classes such as [0, 1, 2]
+                  the class names, for example: ['high', 'medium', 'low']
+
+    title:        the text to display at the top of the matrix
+
+    cmap:         the gradient of the values displayed from matplotlib.pyplot.cm
+                  see http://matplotlib.org/examples/color/colormaps_reference.html
+                  plt.get_cmap('jet') or plt.cm.Blues
+
+    normalize:    If False, plot the raw numbers
+                  If True, plot the proportions
+
+    Usage
+    -----
+    plot_confusion_matrix(cm           = cm,                  # confusion matrix created by
+                                                              # sklearn.metrics.confusion_matrix
+                          normalize    = True,                # show proportions
+                          target_names = y_labels_vals,       # list of names of the classes
+                          title        = best_estimator_name) # title of graph
+
+    Citiation
+    ---------
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import itertools
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(9, 7))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+    plt.show()
+    
+  
+  
+  
+#### Run baseline_randomforest model 
+
+prec_score, rec_score, acc_score, auc_score, f_score, spec_score = model_predict(RandomForestClassifier(random_state=0),x_train,x_test,y_train,y_test)
+
+model_method.append('baseline_randomforest')
+prec.append(prec_score)
+rec.append(rec_score)
+acc.append(acc_score)
+auc.append(auc_score)
+f1.append(f_score)
+spec.append(spec_score)
